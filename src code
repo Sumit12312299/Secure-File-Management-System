@@ -1,102 +1,98 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <openssl/aes.h>
 
-#define MAX 1024
+#define MAX 1000
+#define KEY 123  // Simple XOR key
 
-// Encrypt data using AES encryption
-void encrypt(const unsigned char *data, unsigned char *encrypted, const unsigned char *key) {
-    AES_KEY enc_key;
-    AES_set_encrypt_key(key, 128, &enc_key);
-    AES_encrypt(data, encrypted, &enc_key);
-}
-
-// Decrypt data using AES encryption
-void decrypt(const unsigned char *encrypted, unsigned char *decrypted, const unsigned char *key) {
-    AES_KEY dec_key;
-    AES_set_decrypt_key(key, 128, &dec_key);
-    AES_decrypt(encrypted, decrypted, &dec_key);
-}
-
-// User login
-int login() {
-    char username[MAX], password[MAX];
-    printf("Enter username: ");
-    scanf("%s", username);
-    printf("Enter password: ");
-    scanf("%s", password);
-
-    if (strcmp(username, "admin") == 0 && strcmp(password, "password") == 0) {
-        printf("Login successful!\n");
-        return 1;
-    } else {
-        printf("Invalid credentials.\n");
-        return 0;
+void create_file(const char *filename) {
+    FILE *fp = fopen(filename, "w");
+    if (!fp) {
+        printf("Error creating file.\n");
+        return;
     }
+    char text[MAX];
+    printf("Enter text to save in file: ");
+    getchar(); // clear newline
+    fgets(text, MAX, stdin);
+    fprintf(fp, "%s", text);
+    fclose(fp);
+    printf("File created and saved.\n");
 }
 
-// Main menu
-void menu() {
-    printf("\nSecure File Management System\n");
-    printf("1. Create File\n");
-    printf("2. View File\n");
-    printf("3. Delete File\n");
-    printf("4. Exit\n");
+void read_file(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) {
+        printf("File not found.\n");
+        return;
+    }
+    char ch;
+    printf("Contents of %s:\n", filename);
+    while ((ch = fgetc(fp)) != EOF) {
+        putchar(ch);
+    }
+    fclose(fp);
+    printf("\n");
+}
+
+void xor_encrypt_decrypt(const char *filename) {
+    FILE *fp = fopen(filename, "r+");
+    if (!fp) {
+        printf("File not found.\n");
+        return;
+    }
+    char ch;
+    long pos;
+    while ((ch = fgetc(fp)) != EOF) {
+        pos = ftell(fp);
+        fseek(fp, pos - 1, SEEK_SET);
+        fputc(ch ^ KEY, fp);
+        fseek(fp, pos, SEEK_SET);
+    }
+    fclose(fp);
+    printf("Encryption/Decryption completed.\n");
 }
 
 int main() {
-    if (!login()) {
-        return 1;
-    }
-
     int choice;
-    char filename[MAX];
-    char data[MAX];
-    unsigned char encrypted[MAX];
-    unsigned char decrypted[MAX];
-    unsigned char key[16] = "mysecurekey12345";
+    char filename[100];
 
     while (1) {
-        menu();
-        printf("Choose an option: ");
+        printf("\n--- Secure File Management ---\n");
+        printf("1. Create File\n");
+        printf("2. Read File\n");
+        printf("3. Encrypt File\n");
+        printf("4. Decrypt File\n");
+        printf("5. Exit\n");
+        printf("Enter choice: ");
         scanf("%d", &choice);
-
         switch (choice) {
             case 1:
-                printf("Enter filename: ");
+                printf("Enter filename to create: ");
                 scanf("%s", filename);
-                printf("Enter data: ");
-                scanf("%s", data);
-                encrypt((unsigned char *)data, encrypted, key);
-                FILE *file = fopen(filename, "wb");
-                fwrite(encrypted, sizeof(char), strlen((char *)encrypted), file);
-                fclose(file);
-                printf("File created and encrypted successfully!\n");
+                create_file(filename);
                 break;
             case 2:
-                printf("Enter filename: ");
+                printf("Enter filename to read: ");
                 scanf("%s", filename);
-                file = fopen(filename, "rb");
-                fread(encrypted, sizeof(char), MAX, file);
-                decrypt(encrypted, decrypted, key);
-                printf("Decrypted Data: %s\n", decrypted);
-                fclose(file);
+                read_file(filename);
                 break;
             case 3:
-                printf("Enter filename: ");
+                printf("Enter filename to encrypt: ");
                 scanf("%s", filename);
-                if (remove(filename) == 0)
-                    printf("File deleted successfully!\n");
-                else
-                    printf("Unable to delete the file.\n");
+                xor_encrypt_decrypt(filename);
                 break;
             case 4:
+                printf("Enter filename to decrypt: ");
+                scanf("%s", filename);
+                xor_encrypt_decrypt(filename);
+                break;
+            case 5:
+                printf("Exiting...\n");
                 exit(0);
             default:
-                printf("Invalid choice. Try again.\n");
+                printf("Invalid choice.\n");
         }
     }
-
     return 0;
 }
